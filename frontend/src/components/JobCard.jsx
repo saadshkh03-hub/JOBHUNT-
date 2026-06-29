@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import ScoreBreakdown from './ScoreBreakdown';
+import { getAssistance } from '../api';
 
 function getScoreClass(score) {
   if (score >= 70) return 'high';
@@ -28,8 +29,9 @@ function BuildingIcon() {
 function WorkTypeIcon() {
   return (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10"/>
-      <polyline points="12 6 12 12 16 14"/>
+      <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+      <line x1="8" y1="21" x2="16" y2="21"/>
+      <line x1="12" y1="17" x2="12" y2="21"/>
     </svg>
   );
 }
@@ -55,6 +57,15 @@ function ExternalLinkIcon() {
   );
 }
 
+function CloseIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"/>
+      <line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  );
+}
+
 function formatDate(dateStr) {
   if (!dateStr) return null;
   try {
@@ -66,8 +77,92 @@ function formatDate(dateStr) {
   }
 }
 
+function AssistPanel({ job, onClose }) {
+  const [activeAction, setActiveAction] = useState(null);
+  const [result, setResult] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const runAssist = async (action) => {
+    setActiveAction(action);
+    setIsLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const res = await getAssistance({
+        action,
+        job_title: job.title || '',
+        employer: job.employer || '',
+        job_description: job.description_snippet || '',
+        candidate_summary: '',
+        candidate_skills: [],
+        candidate_role_families: [],
+      });
+      setResult(res.content);
+    } catch (err) {
+      setError('Could not generate content. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="assist-panel">
+      <div className="assist-panel-header">
+        <span className="assist-panel-title">AI Assist</span>
+        <button className="btn-icon" onClick={onClose} title="Close">
+          <CloseIcon />
+        </button>
+      </div>
+
+      <div className="assist-panel-actions">
+        <button
+          className={`btn btn-secondary btn-sm${activeAction === 'cover_letter' ? ' active' : ''}`}
+          onClick={() => runAssist('cover_letter')}
+          disabled={isLoading}
+        >
+          Cover Letter Starter
+        </button>
+        <button
+          className={`btn btn-secondary btn-sm${activeAction === 'tailor_resume' ? ' active' : ''}`}
+          onClick={() => runAssist('tailor_resume')}
+          disabled={isLoading}
+        >
+          Resume Tips
+        </button>
+      </div>
+
+      {isLoading && (
+        <div className="assist-loading">
+          <div className="spinner-sm" />
+          <span>Generating…</span>
+        </div>
+      )}
+
+      {error && (
+        <p className="assist-error">{error}</p>
+      )}
+
+      {result && (
+        <div className="assist-result">
+          <pre className="assist-result-text">{result}</pre>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => {
+              navigator.clipboard?.writeText(result).catch(() => {});
+            }}
+          >
+            Copy to Clipboard
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function JobCard({ job }) {
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const [showAssist, setShowAssist] = useState(false);
   const scoreClass = getScoreClass(job.score);
 
   const applyUrl = job.official_url || job.source_url;
@@ -109,7 +204,7 @@ function JobCard({ job }) {
             {job.work_type && (
               <span className="job-card-meta-item">
                 <WorkTypeIcon />
-                {job.work_type}
+                <span style={{ textTransform: 'capitalize' }}>{job.work_type}</span>
               </span>
             )}
             {postedFormatted && (
@@ -119,7 +214,7 @@ function JobCard({ job }) {
               </span>
             )}
             {closingFormatted && (
-              <span className="job-card-meta-item" style={{ color: 'var(--warning)' }}>
+              <span className="job-card-meta-item meta-closing">
                 <CalendarIcon />
                 Closes {closingFormatted}
               </span>
@@ -130,9 +225,8 @@ function JobCard({ job }) {
             <div className="job-card-salary">{job.salary}</div>
           )}
 
-          {/* Source */}
           <div className="job-card-source">
-            Source: {job.source_name}
+            via {job.source_name}
           </div>
         </div>
       </div>
@@ -141,7 +235,7 @@ function JobCard({ job }) {
       <div className="score-bar-wrap">
         <div className="score-bar-label">
           <span>Match score</span>
-          <strong>{job.score}%</strong>
+          <strong>{Math.round(job.score)}%</strong>
         </div>
         <div className="score-bar-track">
           <div
@@ -155,7 +249,7 @@ function JobCard({ job }) {
       {job.explanation && job.explanation.length > 0 && (
         <ul className="explanation-list">
           {job.explanation.map((item, i) => (
-            <li key={i}>
+            <li key={i} className="explanation-item explanation-positive">
               <svg className="icon-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12"/>
               </svg>
@@ -169,7 +263,7 @@ function JobCard({ job }) {
       {job.blockers && job.blockers.length > 0 && (
         <ul className="explanation-list" style={{ marginTop: '0.35rem' }}>
           {job.blockers.map((b, i) => (
-            <li key={i}>
+            <li key={i} className="explanation-item explanation-blocker">
               <svg className="icon-warn" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                 <line x1="12" y1="9" x2="12" y2="13"/>
@@ -183,8 +277,8 @@ function JobCard({ job }) {
 
       {/* Missing skills */}
       {job.missing_skills && job.missing_skills.length > 0 && (
-        <div style={{ marginTop: '0.4rem' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>Skills to develop: </span>
+        <div className="missing-skills-wrap">
+          <span className="missing-skills-label">Skills to develop: </span>
           <div className="missing-skills-list">
             {job.missing_skills.map((s, i) => (
               <span key={i} className="skill-chip">{s}</span>
@@ -206,16 +300,34 @@ function JobCard({ job }) {
           </a>
         )}
         <button
-          className="btn btn-secondary btn-sm"
-          onClick={() => setShowBreakdown((prev) => !prev)}
+          className={`btn btn-secondary btn-sm${showBreakdown ? ' active' : ''}`}
+          onClick={() => {
+            setShowBreakdown((prev) => !prev);
+            if (showAssist) setShowAssist(false);
+          }}
         >
           {showBreakdown ? 'Hide Details' : 'Score Details'}
+        </button>
+        <button
+          className={`btn btn-secondary btn-sm${showAssist ? ' active' : ''}`}
+          onClick={() => {
+            setShowAssist((prev) => !prev);
+            if (showBreakdown) setShowBreakdown(false);
+          }}
+          title="Generate cover letter or resume tips for this job"
+        >
+          ✦ AI Assist
         </button>
       </div>
 
       {/* Score breakdown (expandable) */}
       {showBreakdown && (
         <ScoreBreakdown breakdown={job.score_breakdown} totalScore={job.score} />
+      )}
+
+      {/* AI Assist panel (expandable) */}
+      {showAssist && (
+        <AssistPanel job={job} onClose={() => setShowAssist(false)} />
       )}
     </div>
   );

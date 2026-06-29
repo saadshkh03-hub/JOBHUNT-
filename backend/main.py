@@ -1,5 +1,7 @@
 from __future__ import annotations
 import asyncio
+import csv
+import io
 import logging
 import os
 import time
@@ -8,7 +10,7 @@ from typing import Optional
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.models import (
     CandidateProfile,
@@ -331,3 +333,147 @@ async def search_jobs(
         search_expanded=search_expanded,
         message=message,
     )
+
+
+# ── CSV Export ─────────────────────────────────────────────────────────────
+
+@app.post("/api/export/csv")
+async def export_csv(payload: dict):
+    """
+    Accept a JSON body with {"jobs": [...ScoredJob dicts...]} and return a CSV file.
+    """
+    jobs = payload.get("jobs", [])
+    if not jobs:
+        raise HTTPException(status_code=400, detail="No jobs provided for export")
+
+    fieldnames = [
+        "score", "match_type", "title", "employer", "location", "work_type",
+        "salary", "source_name", "posted_date", "closing_date",
+        "explanation", "blockers", "missing_skills", "application_url",
+    ]
+
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction="ignore")
+    writer.writeheader()
+
+    for job in jobs:
+        writer.writerow({
+            "score": job.get("score", ""),
+            "match_type": "Strong Match" if job.get("is_strong_match") else "Similar Job",
+            "title": job.get("title", ""),
+            "employer": job.get("employer", ""),
+            "location": job.get("location", ""),
+            "work_type": job.get("work_type", ""),
+            "salary": job.get("salary", ""),
+            "source_name": job.get("source_name", ""),
+            "posted_date": job.get("posted_date", ""),
+            "closing_date": job.get("closing_date", ""),
+            "explanation": " | ".join(job.get("explanation", [])),
+            "blockers": " | ".join(job.get("blockers", [])),
+            "missing_skills": ", ".join(job.get("missing_skills", [])),
+            "application_url": job.get("official_url") or job.get("source_url", ""),
+        })
+
+    output.seek(0)
+    return StreamingResponse(
+        io.BytesIO(output.getvalue().encode("utf-8")),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=job-matches.csv"},
+    )
+
+
+# ── AI Assist: Cover Letter & Resume Tailoring ──────────────────────────────
+
+from pydantic import BaseModel as _BaseModel
+
+
+class AssistRequest(_BaseModel):
+    action: str
+    job_title: str
+    employer: str
+    job_description: str
+    candidate_summary: str
+    candidate_skills: list[str]
+    candidate_role_families: list[str]
+
+
+class AssistResponse(_BaseModel):
+    action: str
+    content: str
+
+
+@app.post("/api/assist", response_model=AssistResponse)
+async def assist(req: AssistRequest):
+    """
+    Generate a cover letter starter or resume tailoring suggestions without
+    relying on an external LLM — produces template-based but personalised output.
+    """
+    skills_str = ", ".join(req.candidate_skills[:8]) if req.candidate_skills else "various professional skills"
+    role_str = req.candidate_role_families[0] if req.candidate_role_families else "professional"
+
+    # Extract key terms from the job description
+    desc_lower = req.job_description.lower()
+    matched_skills = [s for s in req.candidate_skills if s.lower() in desc_lower][:5]
+    matched_str = ", ".join(matched_skills) if matched_skills else skills_str
+
+    if req.action == "cover_letter":
+        content = f"""Dear Hiring Manager,
+
+I am writing to express my strong interest in the {req.job_title} position at {req.employer}.
+
+{req.candidate_summary.strip() if req.candidate_summary else f"As an experienced {role_str}, I bring a solid foundation of skills and a track record of delivering results."}
+
+My background includes expertise in {matched_str}, which aligns directly with the requirements outlined in your advertisement. I am confident that my experience in {role_str.lower()} would allow me to contribute meaningfully to your team from day one.
+
+I am particularly drawn to this opportunity at {req.employer} because it offers the chance to apply my skills in a meaningful way and continue growing as a {role_str.lower()}.
+
+I would welcome the opportunity to discuss how my background and capabilities align with your needs. Thank you for considering my application.
+
+Yours sincerely,
+[Your Name]
+
+---
+Note: This is a starter draft — personalise it with specific achievements and tailor it further to the role before submitting.
+"""
+
+    elif req.action == "tailor_resume":
+        # Extract likely keywords from description
+        keyword_patterns = [
+            r'\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\b',
+        ]
+        jd_words = set(re.findall(r'\b[a-zA-Z]{4,}\b', req.job_description))
+        resume_words = set(re.findall(r'\b[a-zA-Z]{4,}\b', req.candidate_summary))
+        missing_keywords = [w for w in jd_words if w not in resume_words and len(w) > 5][:8]
+
+        content = f"""Resume Tailoring Suggestions for: {req.job_title} at {req.employer}
+
+── Summary Line ─────────────────────────────────────────────────────
+Consider opening your resume summary with something like:
+"Experienced {role_str} with expertise in {matched_str}, seeking to contribute to {req.employer}."
+
+── Skills to Highlight ──────────────────────────────────────────────
+Your resume already shows: {matched_str}
+
+These skills from the job description would strengthen your application if added or made more prominent:
+{chr(10).join(f'• {kw}' for kw in missing_keywords) if missing_keywords else '• Your current skills appear well-aligned — ensure they are clearly listed near the top'}
+
+── Bullet Point Tips ────────────────────────────────────────────────
+• Quantify achievements where possible (e.g. "Reduced processing time by 30%")
+• Mirror terminology from the job description in your experience bullets
+• Lead with action verbs: Delivered, Led, Designed, Developed, Managed
+
+── Keywords to Weave In ─────────────────────────────────────────────
+{', '.join(missing_keywords[:6]) if missing_keywords else 'Your resume keywords appear well-matched to this role'}
+
+── Format Reminders ─────────────────────────────────────────────────
+• Keep resume to 2 pages maximum for this seniority level
+• List your most relevant experience first
+• Ensure contact details are current and professional
+
+---
+Note: These are automated suggestions — review each point in context of your actual experience.
+"""
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown action: {req.action}")
+
+    return AssistResponse(action=req.action, content=content)

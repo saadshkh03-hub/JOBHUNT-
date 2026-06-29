@@ -43,6 +43,36 @@ export async function searchJobs(file, searchParams) {
 }
 
 /**
+ * Export jobs list to CSV — triggers a browser download.
+ * @param {Array} jobs - Array of ScoredJob objects
+ */
+export async function exportCsv(jobs) {
+  const response = await axios.post(
+    `${BASE_URL}/api/export/csv`,
+    { jobs },
+    { responseType: 'blob' },
+  );
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'job-matches.csv');
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+/**
+ * Request cover letter or resume tailoring assistance.
+ * @param {Object} params
+ * @returns {Promise<{action: string, content: string}>}
+ */
+export async function getAssistance(params) {
+  const response = await axios.post(`${BASE_URL}/api/assist`, params);
+  return response.data;
+}
+
+/**
  * Health check
  * @returns {Promise<Object>}
  */

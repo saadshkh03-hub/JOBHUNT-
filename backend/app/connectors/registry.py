@@ -4,6 +4,7 @@ from .base import BaseConnector
 from .adzuna import AdzunaConnector
 from .aps import APSConnector
 from .council import CouncilConnector
+from .jora import JoraConnector
 
 
 def create_connector_registry(
@@ -13,6 +14,7 @@ def create_connector_registry(
     """Create and return a registry of all available connectors."""
     return {
         "adzuna": AdzunaConnector(app_id=adzuna_app_id, app_key=adzuna_app_key),
+        "jora": JoraConnector(),
         "aps": APSConnector(),
         "council": CouncilConnector(),
     }

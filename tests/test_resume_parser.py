@@ -1,7 +1,16 @@
 """Tests for resume_parser.py"""
 import sys
 import os
+import types
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend'))
+
+# Stub pdfplumber before it tries to import broken system cryptography
+_pdfplumber_stub = types.ModuleType("pdfplumber")
+def _pdfplumber_open(f=None, **kw):
+    raise RuntimeError("pdfplumber not available in test environment")
+_pdfplumber_stub.open = _pdfplumber_open
+sys.modules.setdefault("pdfplumber", _pdfplumber_stub)
 
 import pytest
 from unittest.mock import patch, MagicMock

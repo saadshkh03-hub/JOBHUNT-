@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef } from 'react';
 
 const RADIUS_OPTIONS = [
   { value: 10, label: '10 km' },
@@ -8,7 +8,7 @@ const RADIUS_OPTIONS = [
   { value: 500, label: 'Australia-wide' },
 ];
 
-function SearchForm({ onSearch, error }) {
+function SearchForm({ onSearch, error, recentSearches = [], onRepeatSearch }) {
   const [file, setFile] = useState(null);
   const [jobTitle, setJobTitle] = useState('');
   const [location, setLocation] = useState('');
@@ -252,6 +252,32 @@ function SearchForm({ onSearch, error }) {
           </button>
         </div>
       </form>
+
+      {/* Recent searches */}
+      {recentSearches.length > 0 && (
+        <div className="recent-searches">
+          <p className="recent-searches-title">Recent searches</p>
+          <ul className="recent-searches-list">
+            {recentSearches.map((entry) => (
+              <li key={entry.id} className="recent-search-item">
+                <button
+                  className="recent-search-btn"
+                  onClick={() => onRepeatSearch && onRepeatSearch(entry)}
+                  title="Run this search again"
+                >
+                  <span className="recent-search-query">
+                    {entry.job_title || '(any title)'}{entry.location ? ` · ${entry.location}` : ''}
+                    {entry.work_type && entry.work_type !== 'any' ? ` · ${entry.work_type}` : ''}
+                  </span>
+                  <span className="recent-search-meta">
+                    {entry.strongCount} strong · {entry.similarCount} similar · {entry.timestamp}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

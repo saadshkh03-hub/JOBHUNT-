@@ -743,3 +743,268 @@ ul { margin: 0; padding: 0; list-style: none; }
 
   .results-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
 }
+
+/* ─── Results header ─────────────────────────────────────────────────────── */
+.results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.results-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.results-summary {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.results-summary-sub {
+  color: var(--text-light);
+  font-size: 0.875rem;
+}
+
+/* ─── Tab counts ─────────────────────────────────────────────────────────── */
+.tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.4rem;
+  height: 1.4rem;
+  padding: 0 0.3rem;
+  background: var(--border);
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: 0.4rem;
+  color: var(--text);
+}
+
+.tab-btn.active .tab-count {
+  background: var(--primary-light);
+  color: var(--primary-dark);
+}
+
+/* ─── Job list wrapper ───────────────────────────────────────────────────── */
+.job-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+/* ─── Info banner variants ───────────────────────────────────────────────── */
+.info-banner-warn {
+  background: var(--warning-light);
+  border-color: var(--warning);
+  color: var(--text);
+}
+
+/* ─── meta-closing (closing date highlight) ─────────────────────────────── */
+.meta-closing {
+  color: var(--warning) !important;
+}
+
+/* ─── Explanation items ──────────────────────────────────────────────────── */
+.explanation-positive .icon-check { color: var(--success); }
+.explanation-blocker .icon-warn { color: var(--warning); }
+
+/* ─── Missing skills ─────────────────────────────────────────────────────── */
+.missing-skills-wrap {
+  margin-top: 0.4rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.missing-skills-label {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  white-space: nowrap;
+  margin-top: 0.1rem;
+}
+
+/* ─── btn-icon ───────────────────────────────────────────────────────────── */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-light);
+  transition: background 0.12s, color 0.12s;
+}
+
+.btn-icon:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
+/* ─── btn active state ───────────────────────────────────────────────────── */
+.btn.active {
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  border-color: var(--primary);
+}
+
+/* ─── AI Assist panel ────────────────────────────────────────────────────── */
+.assist-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.assist-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.assist-panel-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.assist-panel-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.assist-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-light);
+}
+
+.spinner-sm {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.assist-error {
+  font-size: 0.875rem;
+  color: var(--error);
+  margin: 0.5rem 0 0;
+}
+
+.assist-result {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.assist-result-text {
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.75rem;
+  max-height: 420px;
+  overflow-y: auto;
+  color: var(--text);
+  margin: 0;
+}
+
+/* ─── Recent searches ────────────────────────────────────────────────────── */
+.recent-searches {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.recent-searches-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.recent-searches-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.recent-search-item {
+  list-style: none;
+}
+
+.recent-search-btn {
+  width: 100%;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.55rem 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  text-align: left;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.recent-search-btn:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+}
+
+.recent-search-query {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.recent-search-meta {
+  font-size: 0.775rem;
+  color: var(--text-light);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ─── Responsive tweaks ──────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .results-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .assist-panel-actions {
+    flex-direction: column;
+  }
+
+  .recent-search-btn {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
+  }
+}

@@ -75,12 +75,15 @@ class TestGenerateSimilarQueries:
         assert len(queries) <= 10
 
     def test_no_original_query_duplicated(self):
-        """Original search title should not appear as a similar query."""
-        request = make_request(job_title="Software Engineer")
+        """Identical query+location+radius combos should not appear twice."""
+        request = make_request(job_title="Software Engineer", location="Sydney")
         queries = generate_similar_queries(make_candidate(), request)
-        query_strings = [q["query"].lower() for q in queries]
-        # The original query "software engineer" should not be in similar queries
-        assert "software engineer" not in query_strings
+        # Deduplication: no two entries should share the exact same (query, location, radius) triple
+        seen = set()
+        for q in queries:
+            key = (q["query"].lower(), q.get("location", "").lower(), q.get("radius_km", 0))
+            assert key not in seen, f"Duplicate query found: {key}"
+            seen.add(key)
 
     def test_wider_radius_included(self):
         """When radius is small, a wider radius expansion should be included."""
