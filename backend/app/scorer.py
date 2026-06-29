@@ -26,13 +26,13 @@ SENIORITY_LEVELS = {
     "executive": 6, "vp": 6, "chief": 6, "cto": 6, "ceo": 6,
 }
 
+# Only flag truly hard citizenship requirements (not general "working rights" phrases)
 CITIZENSHIP_PATTERNS = [
-    r"australian\s+citizen(?:ship)?",
     r"must\s+be\s+(?:an?\s+)?australian\s+citizen",
-    r"citizenship\s+(?:is\s+)?required",
-    r"australian\s+permanent\s+resident",
-    r"eligible\s+to\s+work\s+in\s+australia",
-    r"full\s+working\s+rights",
+    r"australian\s+citizen(?:ship)?\s+(?:is\s+)?(?:required|mandatory|essential|only)",
+    r"citizenship\s+(?:is\s+)?(?:required|mandatory|essential)",
+    r"(?:only\s+)?australian\s+citizens?\s+(?:are\s+)?(?:eligible|may\s+apply)",
+    r"candidates?\s+must\s+hold\s+australian\s+citizenship",
 ]
 
 CLEARANCE_PATTERNS = [
@@ -314,26 +314,44 @@ def score_work_type_fit(job: JobListing, search_request: SearchRequest) -> float
 
 
 def check_eligibility(job: JobListing) -> tuple[float, list[str]]:
-    """Returns score 0-100 and list of blockers."""
-    combined = f"{job.description_snippet} {job.eligibility_notes or ''}".lower()
+    """
+    Returns eligibility score 0-100 and list of blockers.
+    Only flags hard mandatory requirements that are clearly stated.
+    Uses eligibility_notes as the definitive field; falls back to description.
+    """
     blockers = []
 
-    for pattern in CITIZENSHIP_PATTERNS:
-        if re.search(pattern, combined):
-            blockers.append("Australian citizenship or permanent residency required")
-            break
+    # Prefer eligibility_notes for definitive requirements
+    notes = (job.eligibility_notes or "").lower()
+    description = (job.description_snippet or "").lower()
 
-    for pattern in CLEARANCE_PATTERNS:
-        if re.search(pattern, combined):
-            blockers.append("Security clearance required")
-            break
+    # Hard citizenship check — use notes first, then description patterns
+    citizenship_flagged = False
+    if notes and ("australian citizen" in notes and "required" in notes):
+        citizenship_flagged = True
+    if not citizenship_flagged:
+        for pattern in CITIZENSHIP_PATTERNS:
+            if re.search(pattern, description):
+                citizenship_flagged = True
+                break
+    if citizenship_flagged:
+        blockers.append("Australian citizenship required — verify your eligibility")
 
-    if "must be 18" in combined:
-        blockers.append("Must be 18 years or older")
+    # Security clearance check
+    clearance_flagged = False
+    if notes and ("clearance" in notes or "nv1" in notes or "nv2" in notes):
+        clearance_flagged = True
+    if not clearance_flagged:
+        for pattern in CLEARANCE_PATTERNS:
+            if re.search(pattern, description):
+                clearance_flagged = True
+                break
+    if clearance_flagged:
+        blockers.append("Security clearance required — check requirements")
 
     if not blockers:
         return 100.0, []
-    # Partial score — not zero, just flagged
+    # Partial score — flagged but not zero (may still be worth applying)
     return 50.0, blockers
 
 

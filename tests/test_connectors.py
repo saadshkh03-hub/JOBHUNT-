@@ -189,7 +189,7 @@ class TestConnectorRegistry:
     def test_get_all_connectors(self):
         registry = create_connector_registry()
         connectors = get_active_connectors(registry, "all")
-        assert len(connectors) == 3
+        assert len(connectors) == 4  # adzuna, jora, aps, council
 
     def test_get_government_connectors(self):
         registry = create_connector_registry()
@@ -206,7 +206,7 @@ class TestConnectorRegistry:
     def test_default_filter_returns_all(self):
         registry = create_connector_registry()
         connectors = get_active_connectors(registry)
-        assert len(connectors) == 3
+        assert len(connectors) == 4  # adzuna, jora, aps, council
 
 
 # ── Jora connector tests ──────────────────────────────────────────────────

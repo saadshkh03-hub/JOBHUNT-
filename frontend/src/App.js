@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import Header from './components/Header';
 import SearchForm from './components/SearchForm';
 import Results from './components/Results';
@@ -64,11 +64,11 @@ function App() {
     setError(null);
   };
 
-  const handleRepeatSearch = useCallback((entry) => {
+  const handleRepeatSearch = (entry) => {
     if (entry.file && entry.searchParams) {
       handleSearch(entry.file, entry.searchParams);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  };
 
   const handleExportCsv = async () => {
     if (!searchResults) return;

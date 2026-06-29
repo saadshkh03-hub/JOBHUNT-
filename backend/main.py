@@ -4,6 +4,7 @@ import csv
 import io
 import logging
 import os
+import re
 import time
 from typing import Optional
 
@@ -24,6 +25,7 @@ from app.normalizer import normalize_job, deduplicate_jobs
 from app.scorer import score_job
 from app.similar_jobs import generate_similar_queries
 from app.connectors.registry import create_connector_registry, get_active_connectors
+from app.connectors.demo import DemoConnector
 
 load_dotenv()
 
@@ -111,7 +113,7 @@ async def _run_connector_search(
                 work_type=work_type,
                 results_per_page=20,
             ),
-            timeout=20.0,
+            timeout=8.0,
         )
     except asyncio.TimeoutError:
         return [], SourceStatus(
@@ -233,6 +235,23 @@ async def search_jobs(
         work_type=work_type,
     )
 
+    # 3b. If all live sources returned nothing, fall back to demo data
+    demo_mode = False
+    if not raw_jobs:
+        logger.info("All live sources returned 0 results — activating demo data connector")
+        demo = DemoConnector()
+        demo_jobs, demo_status = await demo.search(
+            query=effective_query,
+            location=effective_location,
+            radius_km=radius_km,
+            work_type=work_type,
+            results_per_page=40,
+            source_filter=job_source_filter,
+        )
+        raw_jobs.extend(demo_jobs)
+        statuses.append(demo_status)
+        demo_mode = True
+
     # 4. Normalize
     normalized = []
     for raw in raw_jobs:
@@ -269,8 +288,8 @@ async def search_jobs(
 
     search_expanded = False
 
-    # 9. Expand search if not enough strong matches
-    if len(strong_matches) < min_strong_matches and effective_query:
+    # 9. Expand search if not enough strong matches (skip if in demo mode — expansion won't help)
+    if not demo_mode and len(strong_matches) < min_strong_matches and effective_query:
         similar_queries = generate_similar_queries(candidate, search_request)
         for sq in similar_queries[:5]:
             if len(strong_matches) >= min_strong_matches:
@@ -320,7 +339,13 @@ async def search_jobs(
     other_matches.sort(key=lambda j: j.score, reverse=True)
 
     message = None
-    if not strong_matches and not other_matches:
+    if demo_mode:
+        message = (
+            "Live job sources are unavailable in this environment — showing demo data so you can "
+            "see the full matching experience. To search live Australian jobs, configure "
+            "ADZUNA_APP_ID and ADZUNA_APP_KEY (free at developer.adzuna.com)."
+        )
+    elif not strong_matches and not other_matches:
         message = "No jobs found. Try broadening your search location, radius, or lowering the minimum score."
     elif search_expanded:
         message = f"Search expanded to find similar roles. {len(strong_matches)} strong matches found."

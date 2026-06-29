@@ -232,12 +232,12 @@ INDUSTRY_KEYWORDS = {
 
 
 def extract_text_from_pdf(file_bytes: bytes) -> str:
-    import pdfplumber
+    import fitz  # pymupdf — no cryptography dependency
     text_parts = []
-    with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
-        for page in pdf.pages:
-            page_text = page.extract_text()
-            if page_text:
+    with fitz.open(stream=file_bytes, filetype="pdf") as doc:
+        for page in doc:
+            page_text = page.get_text("text")
+            if page_text and page_text.strip():
                 text_parts.append(page_text)
     return "\n".join(text_parts)
 

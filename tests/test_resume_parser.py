@@ -132,13 +132,15 @@ class TestParseResume:
 
     def test_parse_pdf_calls_pdfplumber(self):
         mock_page = MagicMock()
-        mock_page.extract_text.return_value = SAMPLE_RESUME_TEXT
-        mock_pdf = MagicMock()
-        mock_pdf.__enter__ = MagicMock(return_value=mock_pdf)
-        mock_pdf.__exit__ = MagicMock(return_value=False)
-        mock_pdf.pages = [mock_page]
+        # Mock fitz (pymupdf) — the actual PDF library used
+        mock_page = MagicMock()
+        mock_page.get_text.return_value = SAMPLE_RESUME_TEXT
+        mock_doc = MagicMock()
+        mock_doc.__enter__ = MagicMock(return_value=mock_doc)
+        mock_doc.__exit__ = MagicMock(return_value=False)
+        mock_doc.__iter__ = MagicMock(return_value=iter([mock_page]))
 
-        with patch("pdfplumber.open", return_value=mock_pdf):
+        with patch("fitz.open", return_value=mock_doc):
             profile = parse_resume(b"%PDF-fake", "application/pdf")
             assert isinstance(profile, CandidateProfile)
 
